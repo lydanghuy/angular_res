@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-import {Dish} from '../shared/dish';
+import { Dish } from '../shared/dish';
+import { DISHES } from '../shared/dishes';
 
 @Component({
   selector: 'app-menu',
@@ -7,6 +8,9 @@ import {Dish} from '../shared/dish';
   styleUrls: ['./menu.component.scss']
 })
 export class MenuComponent implements OnInit {
+
+  dishes: Dish[] = DISHES;
+  selectedDish: Dish = DISHES[0];
 
   constructor() { }
 
