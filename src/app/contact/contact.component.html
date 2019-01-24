@@ -33,4 +33,17 @@
       </div>
     </div>
   </div>
+  <div fxFlex fxFlexOffset="20px" class="form-size">
+    <h3>Send us your feedback</h3>
+    <form novalidate [formGroup]="feedbackForm">
+      <p>
+        <mat-form-field class="half-width">
+          <input matInput formControlName="firstname" placeholder="First Name" type="text">
+        </mat-form-field>
+        <mat-form-field class="half-width">
+          <input matInput formControlName="lastname" placeholder="Last Name" type="text">
+        </mat-form-field>
+      </p>
+    </form>
+  </div>
 </div>
