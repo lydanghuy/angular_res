@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, ViewChild } from '@angular/core';
+import { Component, OnInit, Inject, ViewChild } from '@angular/core';
 import { Dish } from '../shared/dish';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Params, ActivatedRoute } from '@angular/router'; // ActivatedRoute --> In order to fetch the route value
@@ -6,21 +6,38 @@ import { Location } from '@angular/common'; // Location helps to track the locat
 import { DishService } from './../services/dish.service';
 import { switchMap } from 'rxjs/operators';
 import { Comment } from '../shared/comment';
+import { trigger, state, style, animate, transition } from '@angular/animations';
 
 @Component({
   selector: 'app-dishdetail',
   templateUrl: './dishdetail.component.html',
-  styleUrls: ['./dishdetail.component.scss']
+  styleUrls: ['./dishdetail.component.scss'],
+  animations: [
+    trigger('visibility', [
+        state('shown', style({
+            transform: 'scale(1.0)',
+            opacity: 1
+        })),
+        state('hidden', style({
+            transform: 'scale(0.5)',
+            opacity: 0
+        })),
+        transition('* => *', animate('0.5s ease-in-out'))
+    ])
+  ]
 })
 export class DishdetailComponent implements OnInit {
 
   dish: Dish;
-  dishIds: string[];
-  prev: string;
-  next: string;
+  dishIds: number[];
+  prev: number;
+  next: number;
+  errMess: string;
   @ViewChild('cform') commentFormDirective;
   commentForm: FormGroup;
   comment: Comment;
+  dishCopy: Dish;
+  visibility = 'shown';
 
   formErrors = {
     'author': '',
@@ -39,7 +56,8 @@ export class DishdetailComponent implements OnInit {
     }
   };
 
-  constructor(private dishService: DishService, private route: ActivatedRoute, private location: Location, private fb: FormBuilder) {
+  constructor(private dishService: DishService, private route: ActivatedRoute, private location: Location, private fb: FormBuilder,
+    @Inject('BaseURL') private BaseURL) {
     this.createForm();
   }
 
@@ -47,18 +65,24 @@ export class DishdetailComponent implements OnInit {
     // const id = this.route.snapshot.params['id'];
     // this.dishService.getDish(id).subscribe(dish => this.dish = dish);
 
-    this.route.params.pipe(switchMap(
-      (params: Params) => this.dishService.getDish(params['id'])))
-      .subscribe(dish => {
-        this.dish = dish;
-        this.setPrevNext(dish.id);
-      });
+    // this.route.params.pipe(switchMap(
+    //   (params: Params) => this.dishService.getDish(params['id'])))
+    //   .subscribe(dish => {
+    //     this.dish = dish;
+    //     this.dishCopy = dish;
+    //     this.setPrevNext(dish.id);
+    //   }, errmess => this.errMess = <any>errmess);
+
+      this.route.params.pipe(switchMap((params: Params) => { this.visibility = 'hidden'; return this.dishService.getDish(+params['id']); }))
+      .subscribe(dish => { this.dish = dish; this.dishCopy = dish; this.setPrevNext(dish.id); this.visibility = 'shown'; },
+        errmess => this.errMess = <any>errmess);
 
     this.dishService.getDishIds().subscribe(dishIds => this.dishIds = dishIds);
   }
 
-  setPrevNext(dishId: string) {
+  setPrevNext(dishId: number) {
     const index = this.dishIds.indexOf(dishId);
+    console.log(index);
     this.prev = this.dishIds[(this.dishIds.length + index - 1) % this.dishIds.length];
     this.next = this.dishIds[(this.dishIds.length + index + 1) % this.dishIds.length];
   }
@@ -69,13 +93,13 @@ export class DishdetailComponent implements OnInit {
 
   createForm() {
     this.commentForm = this.fb.group({
-      author: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(25)] ],
-      comment: ['', [Validators.required, Validators.minLength(1)] ],
+      author: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(25)]],
+      comment: ['', [Validators.required, Validators.minLength(1)]],
       rating: 5
     });
 
     this.commentForm.valueChanges
-    .subscribe(data => this.onValueChanged(data));
+      .subscribe(data => this.onValueChanged(data));
 
     this.onValueChanged(); // (re)set validation messages now
   }
@@ -104,7 +128,12 @@ export class DishdetailComponent implements OnInit {
   onSubmit() {
     this.comment = this.commentForm.value;
     this.comment.date = new Date().toISOString();
-    this.dish.comments.push(this.comment);
+    this.dishCopy.comments.push(this.comment);
+    this.dishService.putDish(this.dishCopy)
+      .subscribe(dish => {
+        this.dish = dish; this.dishCopy = dish;
+      },
+      errmess => { this.dish = null; this.dishCopy = null; this.errMess = <any>errmess; });
     console.log(this.comment);
     this.comment = null;
     this.commentForm.reset({
